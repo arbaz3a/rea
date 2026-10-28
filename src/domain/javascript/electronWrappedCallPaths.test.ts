@@ -64,6 +64,29 @@ it("retains switch conditions in a traced bridge wrapper", () => {
   ]);
 });
 
+it.each(["direct", "wrapped"] as const)(
+  "retains the selected case near the end of a switch on a %s path",
+  (kind) => {
+    const exposure = `contextBridge.exposeInMainWorld("api", { ping: () => ipcRenderer.invoke("ping") });`;
+    const cases = Array.from(
+      { length: 8 },
+      (_, index) => `case ${index}:`,
+    ).join("\n");
+    const selected = `${cases}\ncase 8: ${kind === "direct" ? exposure : 'return ipcRenderer.invoke("ping");'}`;
+    const body =
+      kind === "direct"
+        ? `switch (platform) { ${selected} }`
+        : `contextBridge.exposeInMainWorld("api", { ping() { switch (platform) { ${selected} } } });`;
+    const result = analyzeJavaScriptStaticSource(`
+      const { contextBridge, ipcRenderer } = require("electron");
+      ${body}
+    `);
+    expect(
+      result.electron.call_paths?.[0]?.conditions[0]?.expression,
+    ).toContain("((platform) === (8))");
+  },
+);
+
 it("does not invent a selection predicate for dynamic case expressions", () => {
   const result = analyzeJavaScriptStaticSource(`
     const { contextBridge, ipcRenderer } = require("electron");

@@ -305,14 +305,9 @@ export function* collectElectronWrappedCallPathsSteps(
   /** A case can be reached by its own selection or by fallthrough from an earlier case. */
   const switchCaseContext = (
     node: t.SwitchStatement,
-    selected: t.SwitchCase,
+    index: number,
     context: PathContext,
   ): PathContext => {
-    const index = node.cases.indexOf(selected);
-    if (index < 0) {
-      accumulator.unknownFindings += 1;
-      return context;
-    }
     const text = (part: t.Node): string | undefined =>
       part.start == null || part.end == null || part.end - part.start > 512
         ? undefined
@@ -1263,6 +1258,7 @@ export function* collectElectronWrappedCallPathsSteps(
       let next = context;
       for (const statement of node.body) {
         walk(statement, env, next);
+        if (remainingVisits < 0) return;
         const fallthrough = sequentialFallthrough(
           prefixes.statement(statement, node) ?? null,
           env,
@@ -1311,17 +1307,25 @@ export function* collectElectronWrappedCallPathsSteps(
     }
     if (t.isSwitchStatement(node)) {
       walk(node.discriminant, env, context);
-      for (const branch of node.cases) {
+      for (let index = 0; index < node.cases.length; index += 1) {
+        if (remainingVisits < 0) return;
+        const branch = node.cases[index]!;
         if (branch.test) walk(branch.test, env, context);
-        const branchContext = switchCaseContext(node, branch, context);
-        for (const statement of branch.consequent)
+        if (remainingVisits < 0) return;
+        const branchContext = switchCaseContext(node, index, context);
+        for (const statement of branch.consequent) {
+          if (remainingVisits < 0) return;
           walk(statement, env, branchContext);
+        }
       }
       return;
     }
     if (t.isCallExpression(node) || t.isOptionalCallExpression(node))
       call(node, env, context);
-    for (const child of childNodes(node)) walk(child, env, context);
+    for (const child of childNodes(node)) {
+      if (remainingVisits < 0) return;
+      walk(child, env, context);
+    }
   }
   let prefixVisits = 0;
   function* seed(
@@ -1360,9 +1364,16 @@ export function* collectElectronWrappedCallPathsSteps(
           context = condition(context, parent.test, positive);
       } else if (t.isSwitchCase(parent) && child !== parent.test) {
         const owner = state.parentsByNode.get(parent);
-        if (owner && t.isSwitchStatement(owner))
-          context = switchCaseContext(owner, parent, context);
-        else accumulator.unknownFindings += 1;
+        if (owner && t.isSwitchStatement(owner)) {
+          let index = 0;
+          while (index < owner.cases.length && owner.cases[index] !== parent) {
+            if (--remainingVisits < 0) return;
+            index += 1;
+          }
+          if (index < owner.cases.length)
+            context = switchCaseContext(owner, index, context);
+          else accumulator.unknownFindings += 1;
+        } else accumulator.unknownFindings += 1;
       } else if (t.isLogicalExpression(parent) && child === parent.right) {
         const right = symbolicLogicalRight(
           parent.operator,
