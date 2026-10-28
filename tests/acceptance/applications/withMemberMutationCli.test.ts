@@ -22,8 +22,9 @@ const removed = { n: 1 };
 const original = { n: 1 };
 const alias = original;
 const plain = { value: "plain-before" };
+const nested = { child: { flag: "nested-before", values: ["array-before"] } };
 plain.value = "plain-after";
-with (unrelated) { shared.mode = "updated"; counter.n++; delete removed.n; alias.n = 2; }
+with (unrelated) { shared.mode = "updated"; counter.n++; delete removed.n; alias.n = 2; nested.child = replacement; }
 module.exports.read = function read() { return shared.mode; };
 module.exports.keep = function keep() { return shared.keep; };
 module.exports.counter = function readCounter() { return counter.n; };
@@ -66,7 +67,12 @@ module.exports.plain = function readPlain() { return plain.value; };
     }
     const call = await cli.sharedMcpCall?.();
     if (call === undefined) throw new Error("Expected shared MCP session");
-    for (const value of ["initial", "plain-before"]) {
+    for (const value of [
+      "initial",
+      "plain-before",
+      "nested-before",
+      "array-before",
+    ]) {
       const traced = await call("trace_javascript_semantics", {
         application,
         query: {

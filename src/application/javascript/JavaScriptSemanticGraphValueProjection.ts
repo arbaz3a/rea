@@ -55,10 +55,12 @@ const projectInitializerCandidates = (
   const initialContainer = semanticContainer(initial);
   const currentContainer = semanticContainer(current);
   if (initialContainer === null || currentContainer === null) return;
+  const currentByName = new Map<string, JavaScriptSemanticProperty>();
+  for (const property of currentContainer.slots)
+    if (!currentByName.has(property.name))
+      currentByName.set(property.name, property);
   for (const initialProperty of initialContainer.slots) {
-    const currentProperty = currentContainer.slots.find(
-      ({ name }) => name === initialProperty.name,
-    );
+    const currentProperty = currentByName.get(initialProperty.name);
     if (
       initialProperty.presence !== "present" ||
       currentProperty === undefined ||
@@ -66,41 +68,21 @@ const projectInitializerCandidates = (
     )
       continue;
     const propertyPath = [...path, initialProperty.name];
-    if (
-      currentProperty.value.status === "unknown" &&
-      initialProperty.value.status === "literal"
-    ) {
+    if (currentProperty.value.status === "unknown") {
       const slot = semanticPropertySlot(
         context,
         binding.bindingId,
         propertyPath,
         currentProperty,
       );
-      const literal = addLiteralNode(
+      projectUnknownInitializer({
         context,
         binding,
-        initialProperty.value.value,
-        `property:${semanticPropertyPointer(propertyPath)}`,
-      );
-      addSemanticGraphRelation(context.state, {
-        source: literal,
+        initial: initialProperty.value,
+        unknown: currentProperty.value,
         target: slot,
-        relation: "defines",
-        resolution: "candidate",
+        path: propertyPath,
       });
-      if (literal !== null && slot !== null)
-        addSemanticGraphUnknown(context.state, {
-          node_id: literal.node_id,
-          family: "data-flow",
-          relation_kinds: ["defines"],
-          reason: "unknown-value",
-          detail: `The initializer may no longer determine this property: ${currentProperty.value.reason}`,
-          candidate_node_ids: [slot.node_id],
-          evidence: unknownSemanticEvidence(
-            context.file,
-            binding.definitions[0]?.location ?? null,
-          ),
-        });
     } else {
       projectInitializerCandidates(
         context,
@@ -110,6 +92,91 @@ const projectInitializerCandidates = (
         propertyPath,
       );
     }
+  }
+};
+
+/** Retain initializer descendants as candidates without asserting the unknown receiver still exists. */
+const projectUnknownInitializer = ({
+  context,
+  binding,
+  initial,
+  unknown,
+  target,
+  path,
+}: {
+  context: SemanticFlowProjectionContext;
+  binding: JavaScriptSemanticBinding;
+  initial: JavaScriptSemanticValue;
+  unknown: Extract<
+    JavaScriptSemanticValue,
+    { status: "unknown" | "ambiguous" | "cycle" }
+  >;
+  target: ReturnType<typeof semanticPropertySlot>;
+  path: readonly string[];
+}): void => {
+  if (target === null) return;
+  const values =
+    initial.status === "literal"
+      ? [initial.value]
+      : initial.status === "union"
+        ? initial.values
+        : [];
+  for (const value of values) {
+    const literal = addLiteralNode(
+      context,
+      binding,
+      value,
+      `property:${semanticPropertyPointer(path)}`,
+    );
+    addSemanticGraphRelation(context.state, {
+      source: literal,
+      target,
+      relation: "defines",
+      resolution: "candidate",
+    });
+    if (literal !== null)
+      addSemanticGraphUnknown(context.state, {
+        node_id: literal.node_id,
+        family: "data-flow",
+        relation_kinds: ["defines"],
+        reason: "unknown-value",
+        detail: `The initializer may no longer determine this property: ${unknown.reason}`,
+        candidate_node_ids: [target.node_id],
+        evidence: unknownSemanticEvidence(
+          context.file,
+          binding.definitions[0]?.location ?? null,
+        ),
+      });
+  }
+  const container = semanticContainer(initial);
+  if (container === null) return;
+  for (const property of container.slots) {
+    if (property.presence !== "present") continue;
+    const propertyPath = [...path, property.name];
+    const slot = semanticPropertySlot(
+      context,
+      binding.bindingId,
+      propertyPath,
+      {
+        name: property.name,
+        presence: "unknown-coverage",
+        value: unknown,
+      },
+    );
+    addSemanticGraphRelation(context.state, {
+      source: target,
+      target: slot,
+      relation: "writes-property",
+      resolution: "candidate",
+    });
+    projectUnknownInitializer({
+      context,
+      binding,
+      initial: property.value,
+      unknown,
+      target: slot,
+      path: propertyPath,
+    });
   }
 };
 
