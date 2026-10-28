@@ -19,12 +19,17 @@ import { registerAnalysisViewCommands } from "./cli/analysisViewCommands.js";
 import { registerBinaryDiagnosticsCommands } from "./cli/binaryDiagnosticsCommands.js";
 import { registerFridaCommands } from "./cli/fridaCommands.js";
 import type { FridaInstrumentationPort } from "./application/frida/FridaInstrumentationPort.js";
-import { Cli, Formatter, z } from "incur";
+import { Cli, z } from "incur";
 import {
   adaptCliOutputArgumentsForIncur,
   normalizeCliArguments,
   splitIncurBuiltinArguments,
 } from "./cliBuiltinArguments.js";
+import {
+  parseCliOutputArguments,
+  renderCliDocument,
+  renderCliOutputArgumentError,
+} from "./cliOutput.js";
 
 import { createLogger } from "./logger.js";
 import { parseLogLevel } from "./config/processStart.js";
@@ -209,8 +214,7 @@ export const createCli = (
   cli.serve = (arguments_ = process.argv.slice(2), options) => {
     if (complete(arguments_, options ?? {})) return Promise.resolve();
     const normalized = normalizeCliArguments(arguments_);
-    const { command, flags, outputValues } =
-      splitIncurBuiltinArguments(normalized);
+    const { command, flags } = splitIncurBuiltinArguments(normalized);
     const builtin = command[0] === PRODUCT_IDENTITY.cliBinary ? 1 : 0;
     if (
       command[builtin] === "mcp" &&
@@ -227,25 +231,31 @@ export const createCli = (
         return Promise.resolve();
       }
       if (flags.has("--schema")) {
-        let format: Formatter.Format = "toon";
-        for (let index = 0; index < normalized.length; index += 1) {
-          if (outputValues.some((value) => value.index === index)) continue;
-          if (normalized[index] === "--json") format = "json";
-          if (normalized[index] === "--format") {
-            const value = normalized[index + 1];
-            if (
-              value === "toon" ||
-              value === "json" ||
-              value === "yaml" ||
-              value === "md" ||
-              value === "jsonl"
-            )
-              format = value;
-          }
-        }
-        write(
-          `${Formatter.format({ code: "SCHEMA_UNAVAILABLE", message: "Schema discovery is not supported for mcp add. Use 'rea mcp add --help' for its options." }, format)}\n`,
-        );
+        const output = parseCliOutputArguments(normalized);
+        if (!output.validation.ok)
+          write(renderCliOutputArgumentError(output.validation));
+        else if (output.format === "csv" || output.format === "tsv")
+          write(
+            renderCliOutputArgumentError({
+              ok: false,
+              format: "json",
+              code: "UNSUPPORTED_OUTPUT_COMBINATION",
+              message:
+                "CSV/TSV output cannot represent the mcp add schema discovery error. Use a document format instead.",
+            }),
+          );
+        else
+          write(
+            renderCliDocument(
+              {
+                code: "SCHEMA_UNAVAILABLE",
+                message:
+                  "Schema discovery is not supported for mcp add. Use 'rea mcp add --help' for its options.",
+              },
+              output.format,
+              process.stdout.isTTY === true,
+            ),
+          );
         (
           options?.exit ??
           ((code: number) => {

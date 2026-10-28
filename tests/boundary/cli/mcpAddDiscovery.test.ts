@@ -35,6 +35,27 @@ cliTest(
     });
     await expect(access(path)).rejects.toMatchObject({ code: "ENOENT" });
 
+    for (const format of ["csv", "tsv"]) {
+      const result = await run([
+        "mcp",
+        "add",
+        "--agent",
+        "amp",
+        "--schema",
+        "--format",
+        format,
+        "--filter-output",
+        "rows",
+        "--columns",
+        "code",
+      ]);
+      expect(result.exitCode).toBe(1);
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        error: { code: "UNSUPPORTED_OUTPUT_COMBINATION" },
+      });
+      await expect(access(path)).rejects.toMatchObject({ code: "ENOENT" });
+    }
+
     // A flag-shaped output value remains data; the CLI rejects the invalid
     // format before dispatching registration or treating it as discovery.
     const invalidFormat = await run([
