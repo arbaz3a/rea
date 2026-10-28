@@ -350,7 +350,7 @@ Deep native analysis uses Hopper, Ghidra, IDA or Kuna, depending on the target
 and operation. Static JavaScript and .NET inspection work without a native
 analysis engine. Setup can install Hopper after approval; Ghidra, IDA and Kuna
 use your existing installations. See [provider setup](docs/installation.md#hopper)
-and the [Kuna guide](docs/kuna-provider.md) for its supported targets.
+for the options and their supported targets.
 
 </details>
 
