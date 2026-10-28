@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { INLINE_EVIDENCE_MCP_ENVIRONMENT } from "../../fixtures/inlineEvidenceMcpEnvironment.js";
+import { INLINE_EVIDENCE_MCP_ENVIRONMENT } from "../../../scripts/lib/mcp-verification-environment.mjs";
 
 import {
   createTestWorkspace,

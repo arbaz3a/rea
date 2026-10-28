@@ -20,7 +20,7 @@ import type { ElectronObservationPort } from "../../../src/application/javascrip
 import { analyzeJavaScriptApplication } from "../../support/javascriptApplicationScope.js";
 import { CdpElectronProvider } from "../../../src/browser/CdpElectronProvider.js";
 import { createServer } from "../../../src/server/createServer.js";
-import { INLINE_EVIDENCE_MCP_ENVIRONMENT } from "../../fixtures/inlineEvidenceMcpEnvironment.js";
+import { INLINE_EVIDENCE_MCP_ENVIRONMENT } from "../../../scripts/lib/mcp-verification-environment.mjs";
 import { observed } from "../../fixtures/analysisExecution.js";
 import {
   startFakeCdpBrowser,

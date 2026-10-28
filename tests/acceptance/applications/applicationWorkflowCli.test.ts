@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { INLINE_EVIDENCE_MCP_ENVIRONMENT } from "../../fixtures/inlineEvidenceMcpEnvironment.js";
+import { INLINE_EVIDENCE_MCP_ENVIRONMENT } from "../../../scripts/lib/mcp-verification-environment.mjs";
 import { createHash } from "node:crypto";
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";

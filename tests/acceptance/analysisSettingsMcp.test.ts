@@ -6,7 +6,7 @@ import { writeFile } from "node:fs/promises";
 import { createTestTempDirectory } from "../fixtures/temporaryDirectory.js";
 import { join } from "node:path";
 import { connectLocalToolsMcp } from "../fixtures/localToolsMcp.js";
-import { INLINE_EVIDENCE_MCP_ENVIRONMENT } from "../fixtures/inlineEvidenceMcpEnvironment.js";
+import { INLINE_EVIDENCE_MCP_ENVIRONMENT } from "../../scripts/lib/mcp-verification-environment.mjs";
 import { asarHeaderBytes } from "../fixtures/asarHeader.js";
 import { nativeMatchingNamedInventory } from "../fixtures/nativeFunctionMatching.js";
 

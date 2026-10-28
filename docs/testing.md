@@ -481,8 +481,9 @@ scenario still runs through the public workflow; session-lifecycle scenarios
 need their own sessions and cleanup assertions.
 
 Complete-inline-Evidence conformance uses
-`tests/fixtures/inlineEvidenceMcpEnvironment.ts`: a finite 65,536-element
-allowance selected by the application harness and file-owned CLI/MCP session.
+`scripts/lib/mcp-verification-environment.mjs`: a finite 65,536-element
+allowance selected by the application harness, file-owned CLI/MCP session and
+artifact verifiers.
 Explicit harness environment selections take precedence. This keeps canonical
 workflow assertions reachable for large retained observations. Admission-policy
 tests launch the public server with the resource setting unset or explicitly

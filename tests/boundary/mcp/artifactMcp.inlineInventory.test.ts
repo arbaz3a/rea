@@ -1,5 +1,5 @@
 import { parseMcpToolError } from "../../fixtures/mcpToolError.js";
-import { INLINE_EVIDENCE_MCP_ENVIRONMENT } from "../../fixtures/inlineEvidenceMcpEnvironment.js";
+import { INLINE_EVIDENCE_MCP_ENVIRONMENT } from "../../../scripts/lib/mcp-verification-environment.mjs";
 import { readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 

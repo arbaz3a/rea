@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { javascriptApplicationAnalysisResultSchema } from "../../../src/domain/javascript/javascriptApplicationAnalysis.js";
 import { connectLocalToolsMcp } from "../../fixtures/localToolsMcp.js";
-import { INLINE_EVIDENCE_MCP_ENVIRONMENT } from "../../fixtures/inlineEvidenceMcpEnvironment.js";
+import { INLINE_EVIDENCE_MCP_ENVIRONMENT } from "../../../scripts/lib/mcp-verification-environment.mjs";
 import type { SharedMcpCall, TestCli } from "./cliFixture.js";
 
 const execute = promisify(execFile);

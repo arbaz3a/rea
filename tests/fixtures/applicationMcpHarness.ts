@@ -6,7 +6,7 @@ import { ok as resultOk } from "../../src/domain/result.js";
 import { createTestBinarySession } from "./binarySession.js";
 import type { BinarySession } from "../../src/application/binary/BinarySession.js";
 import { observed } from "./analysisExecution.js";
-import { INLINE_EVIDENCE_MCP_ENVIRONMENT } from "./inlineEvidenceMcpEnvironment.js";
+import { INLINE_EVIDENCE_MCP_ENVIRONMENT } from "../../scripts/lib/mcp-verification-environment.mjs";
 import { createServer } from "../../src/server/createServer.js";
 import {
   createTestMcp,
