@@ -63,7 +63,7 @@ it("bounds default MCP arguments before invoking their canonical validator", asy
   const f = await fixture();
   const result = await f.client.callTool({
     name: "capacity_probe",
-    arguments: { values: Array.from({ length: 16_384 }, () => 0) },
+    arguments: { values: Array.from({ length: 1_024 }, () => 0) },
   });
   expect(f.validations()).toBe(0);
   expect(f.calls()).toBe(0);
@@ -104,14 +104,14 @@ it("refuses missing-field Evidence arrays before their per-field issues are allo
   const f = await fixture(undefined, evidenceSchema);
   const result = await f.client.callTool({
     name: "capacity_probe",
-    arguments: { values: Array.from({ length: 16_384 }, () => ({})) },
+    arguments: { values: Array.from({ length: 1_024 }, () => ({})) },
   });
   expect(f.validations()).toBe(0);
   expect(f.calls()).toBe(0);
   expect(refusal(result)).toMatchObject({
     error: {
       code: "resource_constraint",
-      details: { reported_limits: { max_input_elements: 16_384 } },
+      details: { reported_limits: { max_input_elements: 1_024 } },
     },
   });
 });

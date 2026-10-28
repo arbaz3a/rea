@@ -107,6 +107,58 @@ processTest(
 );
 
 processTest(
+  "bounds missing-field Evidence expansion at the default admission boundary",
+  async ({ processes }) => {
+    const { client } = await openHttp(processes, undefined, "off");
+    const observations = [];
+    for (const count of [1_019, 1_020]) {
+      const arguments_ = {
+        functions: Array.from({ length: count }, () => ({})),
+        start: { address: "0x1" },
+        goal: { address: "0x2" },
+      };
+      const start = performance.now();
+      const result = await client.callTool({
+        name: "build_call_path",
+        arguments: arguments_,
+      });
+      const elapsed_ms = performance.now() - start;
+      const error = parseMcpToolError(result).error;
+      if (count === 1_019) {
+        // Three root members and two address members fill the remaining five.
+        // Keep ordinary canonical validation observable at the admitted edge.
+        expect(error.code).toBe("invalid_request");
+      } else {
+        expect(error.code).toBe("resource_constraint");
+        expect(error.details).toMatchObject({
+          resource: "transport",
+          reported_limits: { max_input_elements: 1_024 },
+        });
+        expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(4096);
+      }
+      observations.push({
+        count,
+        code: error.code,
+        argument_json_bytes: Buffer.byteLength(JSON.stringify(arguments_)),
+        response_json_bytes: Buffer.byteLength(JSON.stringify(result)),
+        elapsed_ms,
+      });
+      await client.ping();
+    }
+    const healthy = await client.callTool({
+      name: "inspect_analysis_settings",
+      arguments: {},
+    });
+    expect(healthy.isError).not.toBe(true);
+    console.info(
+      "MCP structured admission boundary observations",
+      JSON.stringify(observations),
+    );
+  },
+  90_000,
+);
+
+processTest(
   "refuses a sub-4MiB HTTP payload under the default allowance without expanded diagnostics",
   async ({ processes }) => {
     const { root, client } = await openHttp(processes, undefined, "off");
@@ -120,14 +172,14 @@ processTest(
       name: "compare_bundles",
       arguments: {
         ...paths,
-        record_pairs: Array.from({ length: 16_384 }, () => 0),
+        record_pairs: Array.from({ length: 1_024 }, () => 0),
       },
     });
     const calibratedError = parseMcpToolError(calibration).error;
     expect(calibratedError.code).toBe("resource_constraint");
     expect(calibratedError.details).toMatchObject({
       resource: "transport",
-      reported_limits: { max_input_elements: 16_384 },
+      reported_limits: { max_input_elements: 1_024 },
     });
     const arguments_ = {
       ...paths,
@@ -145,7 +197,7 @@ processTest(
     expect(error.code).toBe("resource_constraint");
     expect(error.details).toMatchObject({
       resource: "transport",
-      reported_limits: { max_input_elements: 16_384 },
+      reported_limits: { max_input_elements: 1_024 },
     });
     expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(4096);
     await client.ping();
