@@ -19,71 +19,69 @@ const renderedText = (node: DefaultTreeAdapterTypes.Node): string =>
       ? node.childNodes.map(renderedText).join("")
       : "";
 
-cliTest(
-  "preserves binary keyed-archive code-unit identity across output formats",
-  async ({ cli }) => {
+cliTest.for([
+  ["high", "probe:\ud800:end"],
+  ["low", "probe:\udc00:end"],
+  ["pair", "probe:😀:end"],
+  ["replacement", "probe:�:end"],
+  ["nul", "probe:\u0000:end"],
+  ["literal", "probe:\\u0000:end"],
+] as const)(
+  "preserves binary keyed-archive code-unit identity across output formats (%s)",
+  async ([label, value], { cli }) => {
     const root = await createTestTempDirectory("rea-keyed-text-unicode-");
     const renderer = await createMarkdownRenderer(root, { linkify: false });
-    for (const [label, value] of [
-      ["high", "probe:\ud800:end"],
-      ["low", "probe:\udc00:end"],
-      ["pair", "probe:😀:end"],
-      ["replacement", "probe:�:end"],
-      ["nul", "probe:\u0000:end"],
-      ["literal", "probe:\\u0000:end"],
-    ] as const) {
-      const path = join(root, `${label}.bplist`);
-      await writeFile(
-        path,
-        buildBinary({
-          $version: 100000,
-          $archiver: "NSKeyedArchiver",
-          $top: { root: { UID: 1 } },
-          $objects: ["$null", value],
-        }),
-      );
-      const run = (args: readonly string[]) =>
-        cli.run({
-          arguments: ["inspect-keyed-archive", path, ...args],
-        });
-      for (const format of ["json", "yaml"] as const) {
-        const output = await run(["--format", format]);
-        expect(output.exitCode, output.stderr).toBe(0);
-        const document =
-          format === "json"
-            ? JSON.parse(output.stdout)
-            : parseYaml(output.stdout);
-        expect(document.normalized_result.objects[1].value).toBe(value);
-      }
-      for (const args of [[], ["--format", "toon"]] as const) {
-        const output = await run(args);
-        const document = decode(output.stdout) as {
-          code?: string;
-          normalized_result?: { objects: { value?: string }[] };
-        };
-        if (label === "high" || label === "low") {
-          expect(output.exitCode).toBe(1);
-          expect(document.code).toBe("invalid_request");
-          expect(output.stdout).toContain("--format json");
-          expect(output.stdout).not.toContain("�");
-        } else {
-          expect(output.exitCode, output.stderr).toBe(0);
-          expect(document.normalized_result?.objects[1]?.value).toBe(value);
-        }
-      }
-      const markdown = await run(["--format", "md"]);
-      if (label === "high" || label === "low" || label === "nul") {
-        expect(markdown.exitCode).toBe(1);
-        expect(markdown.stdout).toContain("--format json");
-        expect(markdown.stdout).not.toContain("�");
-        continue;
-      }
-      expect(markdown.exitCode, markdown.stderr).toBe(0);
-      const rendered = renderedText(
-        parseFragment(renderer.render(markdown.stdout)),
-      );
-      expect(rendered).toContain(value);
+    const path = join(root, `${label}.bplist`);
+    await writeFile(
+      path,
+      buildBinary({
+        $version: 100000,
+        $archiver: "NSKeyedArchiver",
+        $top: { root: { UID: 1 } },
+        $objects: ["$null", value],
+      }),
+    );
+    const run = (args: readonly string[]) =>
+      cli.run({
+        arguments: ["inspect-keyed-archive", path, ...args],
+      });
+    for (const format of ["json", "yaml"] as const) {
+      const output = await run(["--format", format]);
+      expect(output.exitCode, output.stderr).toBe(0);
+      const document =
+        format === "json"
+          ? JSON.parse(output.stdout)
+          : parseYaml(output.stdout);
+      expect(document.normalized_result.objects[1].value).toBe(value);
     }
+    for (const args of [[], ["--format", "toon"]] as const) {
+      const output = await run(args);
+      const document = decode(output.stdout) as {
+        code?: string;
+        normalized_result?: { objects: { value?: string }[] };
+      };
+      if (label === "high" || label === "low") {
+        expect(output.exitCode).toBe(1);
+        expect(document.code).toBe("invalid_request");
+        expect(output.stdout).toContain("--format json");
+        expect(output.stdout).not.toContain("�");
+      } else {
+        expect(output.exitCode, output.stderr).toBe(0);
+        expect(document.normalized_result?.objects[1]?.value).toBe(value);
+      }
+    }
+    const markdown = await run(["--format", "md"]);
+    if (label === "high" || label === "low" || label === "nul") {
+      expect(markdown.exitCode).toBe(1);
+      expect(markdown.stdout).toContain("--format json");
+      expect(markdown.stdout).not.toContain("�");
+      return;
+    }
+    expect(markdown.exitCode, markdown.stderr).toBe(0);
+    const rendered = renderedText(
+      parseFragment(renderer.render(markdown.stdout)),
+    );
+    expect(rendered).toContain(value);
   },
 );
 
