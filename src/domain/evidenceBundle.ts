@@ -313,7 +313,7 @@ export const readEvidenceBundle = (
       ),
     );
   return err(
-    new EvidenceIntegrityError("Evidence bundle validation failed", {
+    new EvidenceIntegrityError(cause.message, {
       cause,
       userMessage: message,
     }),
