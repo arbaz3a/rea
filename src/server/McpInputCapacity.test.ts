@@ -4,13 +4,14 @@ import { z } from "zod";
 import { EvidenceMcpServerCore } from "./EvidenceMcpServerCore.js";
 import { createToolResultDelivery } from "./toolResult.js";
 import { DEFAULT_MCP_MAX_INPUT_ELEMENTS } from "../config/mcpInputBudget.js";
+import { evidenceSchema } from "../domain/evidence.js";
 
 const defaultElements = DEFAULT_MCP_MAX_INPUT_ELEMENTS;
 
-const fixture = async (maximum?: number) => {
+const fixture = async (maximum?: number, element: z.ZodType = z.unknown()) => {
   let validations = 0;
   let calls = 0;
-  const canonical = z.strictObject({ values: z.array(z.unknown()) });
+  const canonical = z.strictObject({ values: z.array(element) });
   const server = new EvidenceMcpServerCore(
     { name: "input-capacity-fixture", version: "1" },
     { ...(maximum === undefined ? {} : { maxToolInputElements: maximum }) },
@@ -62,7 +63,7 @@ it("bounds default MCP arguments before invoking their canonical validator", asy
   const f = await fixture();
   const result = await f.client.callTool({
     name: "capacity_probe",
-    arguments: { values: Array.from({ length: defaultElements }, () => 0) },
+    arguments: { values: Array.from({ length: 16_384 }, () => 0) },
   });
   expect(f.validations()).toBe(0);
   expect(f.calls()).toBe(0);
@@ -96,6 +97,22 @@ it("counts nested object members as well as array elements before validation", a
   expect(f.calls()).toBe(0);
   expect(refusal(result)).toMatchObject({
     error: { details: { reported_limits: { max_input_elements: 8 } } },
+  });
+});
+
+it("refuses missing-field Evidence arrays before their per-field issues are allocated", async () => {
+  const f = await fixture(undefined, evidenceSchema);
+  const result = await f.client.callTool({
+    name: "capacity_probe",
+    arguments: { values: Array.from({ length: 16_384 }, () => ({})) },
+  });
+  expect(f.validations()).toBe(0);
+  expect(f.calls()).toBe(0);
+  expect(refusal(result)).toMatchObject({
+    error: {
+      code: "resource_constraint",
+      details: { reported_limits: { max_input_elements: 16_384 } },
+    },
   });
 });
 

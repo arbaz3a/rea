@@ -120,12 +120,14 @@ processTest(
       name: "compare_bundles",
       arguments: {
         ...paths,
-        record_pairs: Array.from({ length: 65_536 }, () => 0),
+        record_pairs: Array.from({ length: 16_384 }, () => 0),
       },
     });
-    expect(parseMcpToolError(calibration).error.details).toMatchObject({
+    const calibratedError = parseMcpToolError(calibration).error;
+    expect(calibratedError.code).toBe("resource_constraint");
+    expect(calibratedError.details).toMatchObject({
       resource: "transport",
-      reported_limits: { max_input_elements: 65_536 },
+      reported_limits: { max_input_elements: 16_384 },
     });
     const arguments_ = {
       ...paths,
@@ -143,7 +145,7 @@ processTest(
     expect(error.code).toBe("resource_constraint");
     expect(error.details).toMatchObject({
       resource: "transport",
-      reported_limits: { max_input_elements: 65_536 },
+      reported_limits: { max_input_elements: 16_384 },
     });
     expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(4096);
     await client.ping();

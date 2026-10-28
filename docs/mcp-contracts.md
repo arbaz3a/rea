@@ -366,7 +366,7 @@ content. Ordinary responses keep their existing complete result contract.
 
 ### Input validation resource allowance
 
-Both HTTP and stdio admit at most 65,536 combined array elements and object
+Both HTTP and stdio admit at most 16,384 combined array elements and object
 members in one tool's arguments by default. The pinned SDK counts them before
 canonical schema validation or lazy runtime materialization. Oversized calls
 return a bounded, nonretryable `resource_constraint` with resource `transport`
@@ -377,10 +377,12 @@ usable.
 Set `REA_MCP_MAX_INPUT_ELEMENTS` to a positive decimal safe integer and restart
 REA to select another allowance for a larger complete observation or batch.
 This is a configurable transport admission policy, not a per-array `maxItems`
-contract or an exact heap guarantee. On the pinned bundle schema, 65,537 scalar
-failures added about 43 MiB of heap before SDK diagnostic formatting. The
-default bounds this allocation source; actual memory also depends on schema
-branches, runtime state and concurrent work. HTTP's separate request-byte
+contract or an exact heap guarantee. Missing required fields can amplify one
+input element into many issues: on the pinned comparison Evidence schema,
+1,024 empty objects produced 16,384 issues and about 26 MiB heapUsed delta
+before SDK formatting. The default is conservative about this expansion;
+actual memory also depends on schema branches, runtime state and concurrent
+work. HTTP's separate request-byte
 limit and the client's receive limit still apply.
 
 Canonical schemas and CLI/application analysis semantics remain shared and

@@ -3,11 +3,12 @@ import { ConfigurationError } from "../domain/configurationErrors.js";
 import { err, ok, type Result } from "../domain/result.js";
 
 /** Per-call MCP admission policy, not a byte or heap-size guarantee.
- * 65,537 scalar failures on the pinned canonical bundle schema add about
- * 43 MiB of heap before SDK formatting. Bound this expansion before parsing;
- * operators may select a different finite allowance for their workload.
+ * Missing fields amplify too: 1,024 empty comparison Evidence objects create
+ * 16,384 issues and about 26 MiB heapUsed delta before SDK formatting. Use a
+ * more conservative allowance than scalar-only measurements suggest;
+ * operators may select another finite allowance for their workload.
  */
-export const DEFAULT_MCP_MAX_INPUT_ELEMENTS = 65_536;
+export const DEFAULT_MCP_MAX_INPUT_ELEMENTS = 16_384;
 
 const setting = "REA_MCP_MAX_INPUT_ELEMENTS";
 const constraint = `${setting} must be a positive decimal safe integer counting combined array elements and object members; the default is ${String(DEFAULT_MCP_MAX_INPUT_ELEMENTS)}.`;
