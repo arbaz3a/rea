@@ -33,6 +33,83 @@ export const projectSemanticValues = (
       target: bindingNode,
       path: [],
     });
+    if (binding.initializerValue !== undefined)
+      projectInitializerCandidates(
+        context,
+        binding,
+        binding.initializerValue,
+        binding.value,
+        [],
+      );
+  }
+};
+
+/** Preserve possible initializer flow when later effects make a slot unknown. */
+const projectInitializerCandidates = (
+  context: SemanticFlowProjectionContext,
+  binding: JavaScriptSemanticBinding,
+  initial: JavaScriptSemanticValue,
+  current: JavaScriptSemanticValue,
+  path: readonly string[],
+): void => {
+  const initialContainer = semanticContainer(initial);
+  const currentContainer = semanticContainer(current);
+  if (initialContainer === null || currentContainer === null) return;
+  for (const initialProperty of initialContainer.slots) {
+    const currentProperty = currentContainer.slots.find(
+      ({ name }) => name === initialProperty.name,
+    );
+    if (
+      initialProperty.presence !== "present" ||
+      currentProperty === undefined ||
+      currentProperty.presence === "absent"
+    )
+      continue;
+    const propertyPath = [...path, initialProperty.name];
+    if (
+      currentProperty.value.status === "unknown" &&
+      initialProperty.value.status === "literal"
+    ) {
+      const slot = semanticPropertySlot(
+        context,
+        binding.bindingId,
+        propertyPath,
+        currentProperty,
+      );
+      const literal = addLiteralNode(
+        context,
+        binding,
+        initialProperty.value.value,
+        `property:${semanticPropertyPointer(propertyPath)}`,
+      );
+      addSemanticGraphRelation(context.state, {
+        source: literal,
+        target: slot,
+        relation: "defines",
+        resolution: "candidate",
+      });
+      if (literal !== null && slot !== null)
+        addSemanticGraphUnknown(context.state, {
+          node_id: literal.node_id,
+          family: "data-flow",
+          relation_kinds: ["defines"],
+          reason: "unknown-value",
+          detail: `The initializer may no longer determine this property: ${currentProperty.value.reason}`,
+          candidate_node_ids: [slot.node_id],
+          evidence: unknownSemanticEvidence(
+            context.file,
+            binding.definitions[0]?.location ?? null,
+          ),
+        });
+    } else {
+      projectInitializerCandidates(
+        context,
+        binding,
+        initialProperty.value,
+        currentProperty.value,
+        propertyPath,
+      );
+    }
   }
 };
 
